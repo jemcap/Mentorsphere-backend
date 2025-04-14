@@ -1,4 +1,6 @@
 import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
 const authRoutes = express.Router();
@@ -21,6 +23,7 @@ authRoutes.post("/register", async (req, res, next) => {
   } catch (error) {
     console.log(error.message);
     res.status(400).json({ message: error.message });
+    next();
   }
 });
 
