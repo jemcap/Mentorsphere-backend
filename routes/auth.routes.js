@@ -2,6 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
+import authVerification from "../middleware/auth.middleware.js";
 const authRoutes = express.Router();
 
 authRoutes.post("/register", async (req, res, next) => {
@@ -18,22 +19,6 @@ authRoutes.post("/register", async (req, res, next) => {
 
     await user.save();
 
-    const payload = {
-      user: {
-        id: user.id,
-      },
-    };
-
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" },
-      (err, token) => {
-        if (err) throw Error;
-        console.log(token);
-        res.json({ token });
-      }
-    );
     res.status(201).json({ message: "User created", data: user });
   } catch (error) {
     console.log(error.message);
@@ -59,7 +44,7 @@ authRoutes.post("/login", async (req, res) => {
       },
     };
 
-    const token = jwt.sign(
+    jwt.sign(
       payload,
       process.env.JWT_SECRET,
       {
@@ -67,13 +52,27 @@ authRoutes.post("/login", async (req, res) => {
       },
       (err, token) => {
         if (err) throw Error;
+        console.log(token);
         res.json({ token });
       }
     );
-    res.status(200).json({ message: "User has successfully logged in", token });
+    res
+      .status(200)
+      .json({ message: "User has successfully logged in", data: user });
   } catch (error) {
     console.log(error.message);
     res.status(404).json({ message: error.message });
+    next();
+  }
+});
+
+authRoutes.get("/profile", authVerification, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    res.json(user);
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).send("Server error");
     next();
   }
 });
