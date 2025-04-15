@@ -6,7 +6,7 @@ import authVerification from "../middleware/auth.middleware.js";
 const authRoutes = express.Router();
 
 authRoutes.post("/register", async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, location, bio } = req.body;
   try {
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ message: "User already exists" });
@@ -15,6 +15,8 @@ authRoutes.post("/register", async (req, res, next) => {
       name,
       email,
       password,
+      location,
+      bio,
     });
 
     await user.save();

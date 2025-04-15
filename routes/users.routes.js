@@ -1,15 +1,65 @@
 import express from "express";
 import User from "../models/user.model.js";
 import { body, validationResult } from "express-validator";
+import authVerification from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find().select("-password").populate("skills");
     res.json({ data: users });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+router.put("/profile", authVerification, async (req, res) => {
+  try {
+    const { name, location, bio } = req.body;
+
+    const profileFields = {};
+
+    if (name) profileFields.name = name;
+    if (location) profileFields.location = location;
+    if (bio) profileFields.bio = bio;
+
+    let user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: profileFields },
+      { new: true }
+    ).select("-password");
+
+    res.json({ data: user });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/skills", authVerification, async (req, res) => {
+  try {
+    const { skillId } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.skills.includes(skillId))
+      return res.status(400).json({ message: "Skill already added" });
+    user.skills.push(skillId);
+
+    await user.save();
+
+    const updatedUser = await User.findById(req.user.id)
+      .select("-password")
+      .populate("skills");
+
+    res.status(200).json(updatedUser.skills);
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: error.message });
+    next();
   }
 });
 
@@ -17,37 +67,15 @@ router.get("/:id", async (req, res) => {
   const id = req.params.id;
   if (!id) return "Valid ID must be inputted";
   try {
-    const user = await User.findById(id);
+    const user = await User.findById(id).select("-password").populate("skills");
     if (user) res.json({ data: user });
   } catch (error) {
+    console.log(error.message);
+    if (error.kind === "ObjectId")
+      return res.status(404).json({ message: "User not found" });
     res.status(500).json({ message: error.message });
   }
 });
-
-router.post(
-  "/",
-  [
-    body("name").not().isEmpty().withMessage("Name is required"),
-    body("email").isEmail().withMessage("Please input a valid email address"),
-    body("password")
-      .isLength({ min: 6 })
-      .withMessage("Password must be at least 6 characters"),
-  ],
-
-  async (req, res) => {
-    const { name, email, password } = req.body;
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-      const user = await User.create({ name, email, password });
-      res.status(201).json({ message: "User created", data: user });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
-  }
-);
 
 // PUT update user
 router.put("/:id", async (req, res) => {

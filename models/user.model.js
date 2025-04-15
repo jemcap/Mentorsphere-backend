@@ -15,6 +15,38 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  location: {
+    type: String,
+  },
+  bio: {
+    type: String,
+  },
+  skills: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Skill",
+    },
+  ],
+  experiences: [
+    {
+      title: {
+        type: String,
+        required: true,
+      },
+      yearsOfExperience: {
+        type: Number,
+        required: true,
+      },
+      description: {
+        type: String,
+      },
+      level: {
+        type: String,
+        enum: ["Novice", "Intermediate", "Advanced", "Expert"],
+        default: "Novice",
+      },
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
