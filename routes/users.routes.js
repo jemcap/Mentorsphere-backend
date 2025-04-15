@@ -63,6 +63,80 @@ router.put("/skills", authVerification, async (req, res) => {
   }
 });
 
+router.post("/experience", authVerification, async (req, res, next) => {
+  const { title, yearsOfExperience, description, level } = req.body;
+  try {
+    const newExp = {
+      title,
+      yearsOfExperience,
+      description,
+      level,
+    };
+
+    const user = await User.findById(req.user.id);
+    user.experiences.unshift(newExp);
+
+    await user.save();
+
+    res.status(201).json({
+      message: "Successfully added experiences to user",
+      data: user.experiences,
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(400).json({ message: error.message });
+    next();
+  }
+});
+
+router.delete("/skills/:skill_id", authVerification, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const removeIdx = user.skills.indexOf(req.params.skill_id);
+
+    if (removeIdx === -1)
+      res.status(404).json({ message: "Skill not found in user profile" });
+
+    user.skills.splice(removeIdx, 1);
+    await user.save();
+
+    const updatedUser = await User.findById(req.user.id)
+      .select("-password")
+      .populate("skills");
+    res.status(200).json({
+      message: "Skill successfully deleted",
+      data: updatedUser.skills,
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.delete("/experience/:exp_id", authVerification, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const removeIdx = user.experiences
+      .map((item) => item.id)
+      .indexOf(req.params.exp_id);
+
+    if (removeIdx === -1)
+      res.status(404).json({ message: "Experience not found in user profile" });
+
+    user.experiences.splice(removeIdx, 1);
+
+    user.save();
+
+    res.status(200).json({
+      message: "Experience successfully deleted",
+      data: user.experiences,
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   if (!id) return "Valid ID must be inputted";
