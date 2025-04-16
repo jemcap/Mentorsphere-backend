@@ -89,6 +89,55 @@ router.post("/experience", authVerification, async (req, res, next) => {
   }
 });
 
+router.post("/search", async (req, res) => {
+  try {
+    const { skills, minExperience, maxExperience, experienceLevel, location } =
+      req.body;
+
+    let query = {};
+
+    if (skills && skills.length > 0) {
+      query.skills = { $in: skills };
+    }
+
+    if (location) {
+      query.location = { $regex: new RegExp(location, "i") };
+    }
+
+    if (minExperience || maxExperience || experienceLevel) {
+      let users = await User.find(query).select("-password").populate("skills");
+
+      if (minExperience) {
+        users = users.filter((user) =>
+          user.experiences.some((exp) => exp.yearsOfExperience >= minExperience)
+        );
+      }
+
+      if (maxExperience) {
+        users.users.filter((user) =>
+          user.experiences.some((exp) => exp.yearsOfExperience <= maxExperience)
+        );
+      }
+
+      if (experienceLevel) {
+        users = users.filter((user) =>
+          user.experiences.some((exp) => exp.level === experienceLevel)
+        );
+      }
+      res.status(200).json(users);
+    } else {
+      const users = await User.find(query)
+        .select("-password")
+        .populate("skills");
+
+      res.status(200).json(users);
+    }
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.delete("/skills/:skill_id", authVerification, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
